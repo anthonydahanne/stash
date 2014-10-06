@@ -96,6 +96,17 @@ func GetBranches(baseUrl, userName, password, projectKey, repositorySlug string)
 	return branches, nil
 }
 
+func HasRepository(repositories map[int]Repository, url string) (Repository, bool) {
+	for _, repo := range repositories {
+		for _, clone := range repo.Links.Clones {
+			if clone.HREF == url {
+				return repo, true
+			}
+		}
+	}
+	return Repository{}, false
+}
+
 func consumeResponse(req *http.Request) (int, []byte, error) {
 	var response *http.Response
 	var err error
