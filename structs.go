@@ -30,4 +30,19 @@ type (
 		HREF string `json:"href"`
 		Name string `json:"name"`
 	}
+
+	Branches struct {
+		IsLastPage    bool     `json:"isLastPage"`
+		Size          int      `json:"size"`
+		Start         int      `json:"start"`
+		NextPageStart int      `json:"nextPageStart"`
+		Branch        []Branch `json:"values"`
+	}
+
+	Branch struct {
+		ID              string `json:"id"`
+		DisplayID       string `json:"displayId"`
+		LatestChangeSet string `json:"latestChangeset"`
+		IsDefault       bool   `json:"isDefault"`
+	}
 )

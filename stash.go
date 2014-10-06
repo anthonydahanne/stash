@@ -55,6 +55,47 @@ func GetRepositories(baseUrl string) (map[int]Repository, error) {
 	return repositories, nil
 }
 
+// GetBranches returns a map of branches indexed by branch display name for the given repository.
+func GetBranches(baseUrl, userName, password, projectKey, repositorySlug string) (map[string]Branch, error) {
+	start := 0
+	branches := make(map[string]Branch)
+	morePages := true
+	for morePages {
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/branches?start=%d&limit=%d", baseUrl, projectKey, repositorySlug, start, stashPageLimit), nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Accept", "application/json")
+		req.SetBasicAuth(userName, password)
+
+		responseCode, data, err := consumeResponse(req)
+		if responseCode != http.StatusOK {
+			var reason string = "unhandled reason"
+			switch {
+			case responseCode == http.StatusNotFound:
+				reason = "Not found"
+			case responseCode == http.StatusUnauthorized:
+				reason = "Unauthorized"
+			}
+			return nil, fmt.Errorf("Error creating repository: %s.  Status code: %d.  Reason: %s\n", string(data), responseCode, reason)
+		}
+
+		var r Branches
+		err = json.Unmarshal(data, &r)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, branch := range r.Branch {
+			branches[branch.DisplayID] = branch
+		}
+
+		morePages = !r.IsLastPage
+		start = r.NextPageStart
+	}
+	return branches, nil
+}
+
 func consumeResponse(req *http.Request) (int, []byte, error) {
 	var response *http.Response
 	var err error
