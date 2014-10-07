@@ -30,6 +30,9 @@ func GetRepositories(baseUrl string) (map[int]Repository, error) {
 		req.Header.Set("Accept", "application/json")
 
 		responseCode, data, err := consumeResponse(req)
+		if err != nil {
+			return nil, err
+		}
 		if responseCode != http.StatusOK {
 			var reason string = "unhandled reason"
 			switch {
