@@ -36,7 +36,7 @@ func GetRepositories(baseUrl string) (map[int]Repository, error) {
 			case responseCode == http.StatusBadRequest:
 				reason = "Bad request."
 			}
-			return nil, fmt.Errorf("Error creating repository: %s.  Status code: %d.  Reason: %s\n", string(data), responseCode, reason)
+			return nil, fmt.Errorf("Error getting repositories: %s.  Status code: %d.  Reason: %s\n", string(data), responseCode, reason)
 		}
 
 		var r Repositories
