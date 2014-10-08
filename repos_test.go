@@ -180,6 +180,9 @@ var (
 
 func TestGetRepositories(t *testing.T) {
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Fatalf("wanted GET but found %s\n", r.Method)
+		}
 		url := *r.URL
 		if url.Path != "/rest/api/1.0/repos" {
 			t.Fatalf("GetRepositories() URL path expected to be /rest/api/1.0/repos but found %s\n", url.Path)
