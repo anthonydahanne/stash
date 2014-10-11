@@ -76,3 +76,24 @@ func TestGetBranches(t *testing.T) {
 		}
 	}
 }
+
+func TestGetBranches500(t *testing.T) {
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Fatalf("wanted GET but found %s\n", r.Method)
+		}
+		url := *r.URL
+		if url.Path != "/rest/api/1.0/projects/PRJ/repos/widge/branches" {
+			t.Fatalf("GetBranches() URL path expected to be /rest/api/1.0/projects/PRJ/repos/widge/branches but found %s\n", url.Path)
+		}
+		if r.Header.Get("Accept") != "application/json" {
+			t.Fatalf("GetBranches() expected request Accept header to be application/json but found %s\n", r.Header.Get("Accept"))
+		}
+		w.WriteHeader(500)
+	}))
+	defer testServer.Close()
+
+	if _, err := GetBranches(testServer.URL, "u", "p", "PRJ", "widge"); err == nil {
+		t.Fatalf("GetBranches() expecting an error but received none\n")
+	}
+}
