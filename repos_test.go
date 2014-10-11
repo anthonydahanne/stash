@@ -220,3 +220,24 @@ func TestGetRepositories(t *testing.T) {
 	}
 
 }
+
+func TestGetRepositories500(t *testing.T) {
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Fatalf("wanted GET but found %s\n", r.Method)
+		}
+		url := *r.URL
+		if url.Path != "/rest/api/1.0/repos" {
+			t.Fatalf("GetRepositories() URL path expected to be /rest/api/1.0/repos but found %s\n", url.Path)
+		}
+		if r.Header.Get("Accept") != "application/json" {
+			t.Fatalf("GetRepositories() expected request Accept header to be application/json but found %s\n", r.Header.Get("Accept"))
+		}
+		w.WriteHeader(500)
+	}))
+	defer testServer.Close()
+
+	if _, err := GetRepositories(testServer.URL); err == nil {
+		t.Fatalf("GetRepositories() expecting an error, but received none\n")
+	}
+}
