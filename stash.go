@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 const (
@@ -14,7 +15,7 @@ const (
 )
 
 var (
-	httpClient *http.Client = &http.Client{}
+	httpClient *http.Client = &http.Client{Timeout: 10 * time.Second}
 )
 
 // GetRepositories returns a map of repositories indexed by repository URL.
