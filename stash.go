@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 )
@@ -28,6 +29,7 @@ func GetRepositories(baseUrl string) (map[int]Repository, error) {
 		if err != nil {
 			return nil, err
 		}
+		log.Printf("stash.GetRepositories URL %s\n", req.URL)
 		req.Header.Set("Accept", "application/json")
 
 		responseCode, data, err := consumeResponse(req)
@@ -69,10 +71,15 @@ func GetBranches(baseUrl, userName, password, projectKey, repositorySlug string)
 		if err != nil {
 			return nil, err
 		}
+		log.Printf("stash.GetBranches URL %s\n", req.URL)
 		req.Header.Set("Accept", "application/json")
 		req.SetBasicAuth(userName, password)
 
 		responseCode, data, err := consumeResponse(req)
+		if err != nil {
+			return nil, err
+		}
+
 		if responseCode != http.StatusOK {
 			var reason string = "unhandled reason"
 			switch {
