@@ -88,7 +88,7 @@ func GetBranches(baseUrl, userName, password, projectKey, repositorySlug string)
 			case responseCode == http.StatusUnauthorized:
 				reason = "Unauthorized"
 			}
-			return nil, fmt.Errorf("Error creating repository: %s.  Status code: %d.  Reason: %s\n", string(data), responseCode, reason)
+			return nil, fmt.Errorf("Error getting repository branches: %s.  Status code: %d.  Reason: %s\n", string(data), responseCode, reason)
 		}
 
 		var r Branches
