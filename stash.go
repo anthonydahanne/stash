@@ -128,7 +128,7 @@ func consumeResponse(req *http.Request) (rc int, buffer []byte, err error) {
 		}
 		if e := recover(); e != nil {
 			trace := make([]byte, 10*1024)
-			_ = runtime.Stack(trace, true)
+			_ = runtime.Stack(trace, false)
 			log.Printf("%s", trace)
 			err = fmt.Errorf("%v", e)
 		}
