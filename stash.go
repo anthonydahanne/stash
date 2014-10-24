@@ -123,7 +123,7 @@ func consumeResponse(req *http.Request) (rc int, buffer []byte, err error) {
 	response, err := httpClient.Do(req)
 
 	defer func() {
-		if response.Body != nil {
+		if response != nil && response.Body != nil {
 			response.Body.Close()
 		}
 		if e := recover(); e != nil {
