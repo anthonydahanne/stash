@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"runtime"
 	"time"
 )
 
@@ -118,19 +119,28 @@ func HasRepository(repositories map[int]Repository, url string) (Repository, boo
 	return Repository{}, false
 }
 
-func consumeResponse(req *http.Request) (int, []byte, error) {
-	var response *http.Response
-	var err error
-	response, err = httpClient.Do(req)
+func consumeResponse(req *http.Request) (rc int, buffer []byte, err error) {
+	response, err := httpClient.Do(req)
+
+	defer func() {
+		if response.Body != nil {
+			response.Body.Close()
+		}
+		if e := recover(); e != nil {
+			trace := make([]byte, 10*1024)
+			_ = runtime.Stack(trace, true)
+			log.Printf("%s", trace)
+			err = fmt.Errorf("%v", e)
+		}
+	}()
 
 	if err != nil {
-		return 0, nil, err
+		panic(err)
 	}
 
-	data, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return 0, nil, err
+	if data, err := ioutil.ReadAll(response.Body); err != nil {
+		panic(err)
+	} else {
+		return response.StatusCode, data, nil
 	}
-	defer response.Body.Close()
-	return response.StatusCode, data, nil
 }
