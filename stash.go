@@ -180,6 +180,7 @@ func consumeResponse(req *http.Request) (rc int, buffer []byte, err error) {
 	}
 }
 
+// SshUrl extracts the SSH-based URL from the repository metadata.
 func (repo Repository) SshUrl() string {
 	for _, clone := range repo.Links.Clones {
 		if clone.Name == "ssh" {
