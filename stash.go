@@ -108,6 +108,41 @@ func GetBranches(baseUrl, userName, password, projectKey, repositorySlug string)
 	return branches, nil
 }
 
+// GetRepository returns a repository representation for the given Stash Project key and repository slug.
+func GetRepository(baseUrl, userName, password, projectKey, repositorySlug string) (Repository, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s", baseUrl, projectKey, repositorySlug), nil)
+	if err != nil {
+		return Repository{}, err
+	}
+	log.Printf("stash.GetRepository %s\n", req.URL)
+	req.Header.Set("Accept", "application/json")
+	req.SetBasicAuth(userName, password)
+
+	responseCode, data, err := consumeResponse(req)
+	if err != nil {
+		return Repository{}, err
+	}
+
+	if responseCode != http.StatusOK {
+		var reason string = "unhandled reason"
+		switch {
+		case responseCode == http.StatusNotFound:
+			reason = "Not found"
+		case responseCode == http.StatusUnauthorized:
+			reason = "Unauthorized"
+		}
+		return Repository{}, fmt.Errorf("Error getting repository: %s.  Status code: %d.  Reason: %s\n", string(data), responseCode, reason)
+	}
+
+	var r Repository
+	err = json.Unmarshal(data, &r)
+	if err != nil {
+		return Repository{}, err
+	}
+
+	return r, nil
+}
+
 func HasRepository(repositories map[int]Repository, url string) (Repository, bool) {
 	for _, repo := range repositories {
 		for _, clone := range repo.Links.Clones {
@@ -143,4 +178,13 @@ func consumeResponse(req *http.Request) (rc int, buffer []byte, err error) {
 	} else {
 		return response.StatusCode, data, nil
 	}
+}
+
+func (repo Repository) SshUrl() string {
+	for _, clone := range repo.Links.Clones {
+		if clone.Name == "ssh" {
+			return clone.HREF
+		}
+	}
+	return ""
 }
