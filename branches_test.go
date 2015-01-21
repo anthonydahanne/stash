@@ -57,6 +57,9 @@ func TestGetBranches(t *testing.T) {
 		if r.Header.Get("Accept") != "application/json" {
 			t.Fatalf("GetBranches() expected request Accept header to be application/json but found %s\n", r.Header.Get("Accept"))
 		}
+		if r.Header.Get("Authorization") != "Basic dTpw" {
+			t.Fatalf("Want  Basic dTpw but found %s\n", r.Header.Get("Authorization"))
+		}
 		fmt.Fprintln(w, branches)
 	}))
 	defer testServer.Close()
@@ -89,6 +92,9 @@ func TestGetBranches500(t *testing.T) {
 		}
 		if r.Header.Get("Accept") != "application/json" {
 			t.Fatalf("GetBranches() expected request Accept header to be application/json but found %s\n", r.Header.Get("Accept"))
+		}
+		if r.Header.Get("Authorization") != "Basic dTpw" {
+			t.Fatalf("Want  Basic dTpw but found %s\n", r.Header.Get("Authorization"))
 		}
 		w.WriteHeader(500)
 	}))

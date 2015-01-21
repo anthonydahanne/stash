@@ -16,6 +16,9 @@ func TestHasRepository(t *testing.T) {
 		if r.Header.Get("Accept") != "application/json" {
 			t.Fatalf("GetRepositories() expected request Accept header to be application/json but found %s\n", r.Header.Get("Accept"))
 		}
+		if r.Header.Get("Authorization") != "Basic dTpw" {
+			t.Fatalf("Want  Basic dTpw but found %s\n", r.Header.Get("Authorization"))
+		}
 		fmt.Fprintln(w, repos)
 	}))
 	defer testServer.Close()

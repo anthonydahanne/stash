@@ -96,6 +96,7 @@ func (client Client) GetRepositories() (map[int]Repository, error) {
 		}
 		log.Printf("stash.GetRepositories URL %s\n", req.URL)
 		req.Header.Set("Accept", "application/json")
+		req.SetBasicAuth(client.userName, client.password)
 
 		responseCode, data, err := consumeResponse(req)
 		if err != nil {
@@ -180,7 +181,7 @@ func (client Client) GetRepository(projectKey, repositorySlug string) (Repositor
 	}
 	log.Printf("stash.GetRepository %s\n", req.URL)
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Accept", "application/json")
+	req.SetBasicAuth(client.userName, client.password)
 
 	responseCode, data, err := consumeResponse(req)
 	if err != nil {
