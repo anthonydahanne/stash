@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 )
 
@@ -23,7 +24,8 @@ func TestHasRepository(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	stashClient := NewClient("u", "p", testServer.URL)
+	url, _ := url.Parse(testServer.URL)
+	stashClient := NewClient("u", "p", url)
 	repositories, err := stashClient.GetRepositories()
 	if err != nil {
 		t.Fatalf("GetRepositories() not expecting an error, but received: %v\n", err)

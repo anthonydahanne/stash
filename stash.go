@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"runtime"
 	"time"
 )
@@ -22,7 +23,7 @@ type (
 	Client struct {
 		userName string
 		password string
-		baseURL  string
+		baseURL  *url.URL
 		Stash
 	}
 
@@ -80,7 +81,7 @@ var (
 	httpClient *http.Client = &http.Client{Timeout: 10 * time.Second}
 )
 
-func NewClient(userName, password, baseURL string) Stash {
+func NewClient(userName, password string, baseURL *url.URL) Stash {
 	return Client{userName: userName, password: password, baseURL: baseURL}
 }
 
@@ -90,7 +91,7 @@ func (client Client) GetRepositories() (map[int]Repository, error) {
 	repositories := make(map[int]Repository)
 	morePages := true
 	for morePages {
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/repos?start=%d&limit=%d", client.baseURL, start, stashPageLimit), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/repos?start=%d&limit=%d", client.baseURL.String(), start, stashPageLimit), nil)
 		if err != nil {
 			return nil, err
 		}
@@ -133,7 +134,7 @@ func (client Client) GetBranches(projectKey, repositorySlug string) (map[string]
 	branches := make(map[string]Branch)
 	morePages := true
 	for morePages {
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/branches?start=%d&limit=%d", client.baseURL, projectKey, repositorySlug, start, stashPageLimit), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/branches?start=%d&limit=%d", client.baseURL.String(), projectKey, repositorySlug, start, stashPageLimit), nil)
 		if err != nil {
 			return nil, err
 		}
@@ -175,7 +176,7 @@ func (client Client) GetBranches(projectKey, repositorySlug string) (map[string]
 
 // GetRepository returns a repository representation for the given Stash Project key and repository slug.
 func (client Client) GetRepository(projectKey, repositorySlug string) (Repository, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s", client.baseURL, projectKey, repositorySlug), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s", client.baseURL.String(), projectKey, repositorySlug), nil)
 	if err != nil {
 		return Repository{}, err
 	}

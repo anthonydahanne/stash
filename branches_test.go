@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 )
 
@@ -64,7 +65,8 @@ func TestGetBranches(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	stashClient := NewClient("u", "p", testServer.URL)
+	url, _ := url.Parse(testServer.URL)
+	stashClient := NewClient("u", "p", url)
 	branches, err := stashClient.GetBranches("PRJ", "widge")
 	if err != nil {
 		t.Fatalf("GetBranches() not expecting an error, but received: %v\n", err)
@@ -100,7 +102,8 @@ func TestGetBranches500(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	stashClient := NewClient("u", "p", testServer.URL)
+	url, _ := url.Parse(testServer.URL)
+	stashClient := NewClient("u", "p", url)
 	if _, err := stashClient.GetBranches("PRJ", "widge"); err == nil {
 		t.Fatalf("GetBranches() expecting an error but received none\n")
 	}
