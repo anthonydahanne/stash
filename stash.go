@@ -13,7 +13,7 @@ import (
 )
 
 type (
-	Operations interface {
+	Stash interface {
 		GetRepositories() (map[int]Repository, error)
 		GetBranches(projectKey, repositorySlug string) (map[string]Branch, error)
 		GetRepository(projectKey, repositorySlug string) (Repository, error)
@@ -23,7 +23,7 @@ type (
 		userName string
 		password string
 		baseURL  string
-		Operations
+		Stash
 	}
 
 	Repositories struct {
@@ -80,7 +80,7 @@ var (
 	httpClient *http.Client = &http.Client{Timeout: 10 * time.Second}
 )
 
-func NewClient(userName, password, baseURL string) Client {
+func NewClient(userName, password, baseURL string) Stash {
 	return Client{userName: userName, password: password, baseURL: baseURL}
 }
 
