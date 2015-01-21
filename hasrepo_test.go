@@ -20,7 +20,8 @@ func TestHasRepository(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	repositories, err := GetRepositories(testServer.URL)
+	stashClient := NewClient("u", "p", testServer.URL)
+	repositories, err := stashClient.GetRepositories()
 	if err != nil {
 		t.Fatalf("GetRepositories() not expecting an error, but received: %v\n", err)
 	}

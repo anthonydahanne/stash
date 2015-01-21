@@ -78,7 +78,8 @@ func TestGetRepository(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	repo, err := GetRepository(testServer.URL, "u", "p", "PROJ", "slug")
+	stashClient := NewClient("u", "p", testServer.URL)
+	repo, err := stashClient.GetRepository("PROJ", "slug")
 	if err != nil {
 		t.Fatalf("Not expecting error: %v\n", err)
 	}
@@ -101,7 +102,8 @@ func TestGetRepository404(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	_, err := GetRepository(testServer.URL, "u", "p", "PROJ", "slug")
+	stashClient := NewClient("u", "p", testServer.URL)
+	_, err := stashClient.GetRepository("PROJ", "slug")
 	if err == nil {
 		t.Fatalf("Expecting error but did not get one\n")
 	}
@@ -113,7 +115,8 @@ func TestGetRepository401(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	_, err := GetRepository(testServer.URL, "u", "p", "PROJ", "slug")
+	stashClient := NewClient("u", "p", testServer.URL)
+	_, err := stashClient.GetRepository("PROJ", "slug")
 	if err == nil {
 		t.Fatalf("Expecting error but did not get one\n")
 	}

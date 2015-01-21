@@ -12,6 +12,66 @@ import (
 	"time"
 )
 
+type (
+	Operations interface {
+		GetRepositories() (map[int]Repository, error)
+		GetBranches(projectKey, repositorySlug string) (map[string]Branch, error)
+		GetRepository(projectKey, repositorySlug string) (Repository, error)
+	}
+
+	Client struct {
+		userName string
+		password string
+		baseURL  string
+		Operations
+	}
+
+	Repositories struct {
+		IsLastPage    bool         `json:"isLastPage"`
+		Size          int          `json:"size"`
+		Start         int          `json:"start"`
+		NextPageStart int          `json:"nextPageStart"`
+		Repository    []Repository `json:"values"`
+	}
+
+	Repository struct {
+		ID      int     `json:"id"`
+		Name    string  `json:"name"`
+		Slug    string  `json:"slug"`
+		Project Project `json:"project"`
+		ScmID   string  `json:"scmId"`
+		Links   Links   `json:"links"`
+	}
+
+	Project struct {
+		Key string `json:"key"`
+	}
+
+	Links struct {
+		Clones []Clone `json:"clone"`
+	}
+
+	Clone struct {
+		HREF string `json:"href"`
+		Name string `json:"name"`
+	}
+
+	Branches struct {
+		IsLastPage    bool     `json:"isLastPage"`
+		Size          int      `json:"size"`
+		Start         int      `json:"start"`
+		NextPageStart int      `json:"nextPageStart"`
+		Branch        []Branch `json:"values"`
+	}
+
+	Branch struct {
+		ID              string `json:"id"`
+		DisplayID       string `json:"displayId"`
+		LatestChangeSet string `json:"latestChangeset"`
+		IsDefault       bool   `json:"isDefault"`
+	}
+)
+
 const (
 	stashPageLimit int = 25
 )
@@ -20,13 +80,17 @@ var (
 	httpClient *http.Client = &http.Client{Timeout: 10 * time.Second}
 )
 
+func NewClient(userName, password, baseURL string) Client {
+	return Client{userName: userName, password: password, baseURL: baseURL}
+}
+
 // GetRepositories returns a map of repositories indexed by repository URL.
-func GetRepositories(baseUrl string) (map[int]Repository, error) {
+func (client Client) GetRepositories() (map[int]Repository, error) {
 	start := 0
 	repositories := make(map[int]Repository)
 	morePages := true
 	for morePages {
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/repos?start=%d&limit=%d", baseUrl, start, stashPageLimit), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/repos?start=%d&limit=%d", client.baseURL, start, stashPageLimit), nil)
 		if err != nil {
 			return nil, err
 		}
@@ -63,18 +127,18 @@ func GetRepositories(baseUrl string) (map[int]Repository, error) {
 }
 
 // GetBranches returns a map of branches indexed by branch display name for the given repository.
-func GetBranches(baseUrl, userName, password, projectKey, repositorySlug string) (map[string]Branch, error) {
+func (client Client) GetBranches(projectKey, repositorySlug string) (map[string]Branch, error) {
 	start := 0
 	branches := make(map[string]Branch)
 	morePages := true
 	for morePages {
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/branches?start=%d&limit=%d", baseUrl, projectKey, repositorySlug, start, stashPageLimit), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/branches?start=%d&limit=%d", client.baseURL, projectKey, repositorySlug, start, stashPageLimit), nil)
 		if err != nil {
 			return nil, err
 		}
 		log.Printf("stash.GetBranches URL %s\n", req.URL)
 		req.Header.Set("Accept", "application/json")
-		req.SetBasicAuth(userName, password)
+		req.SetBasicAuth(client.userName, client.password)
 
 		responseCode, data, err := consumeResponse(req)
 		if err != nil {
@@ -109,14 +173,14 @@ func GetBranches(baseUrl, userName, password, projectKey, repositorySlug string)
 }
 
 // GetRepository returns a repository representation for the given Stash Project key and repository slug.
-func GetRepository(baseUrl, userName, password, projectKey, repositorySlug string) (Repository, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s", baseUrl, projectKey, repositorySlug), nil)
+func (client Client) GetRepository(projectKey, repositorySlug string) (Repository, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s", client.baseURL, projectKey, repositorySlug), nil)
 	if err != nil {
 		return Repository{}, err
 	}
 	log.Printf("stash.GetRepository %s\n", req.URL)
 	req.Header.Set("Accept", "application/json")
-	req.SetBasicAuth(userName, password)
+	req.Header.Set("Accept", "application/json")
 
 	responseCode, data, err := consumeResponse(req)
 	if err != nil {
