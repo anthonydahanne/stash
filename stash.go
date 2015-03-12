@@ -18,6 +18,7 @@ type (
 		GetRepositories() (map[int]Repository, error)
 		GetBranches(projectKey, repositorySlug string) (map[string]Branch, error)
 		GetRepository(projectKey, repositorySlug string) (Repository, error)
+		GetRawFile(projectKey, repositorySlug, branch, filePath string) ([]byte, error)
 	}
 
 	Client struct {
@@ -207,6 +208,25 @@ func (client Client) GetRepository(projectKey, repositorySlug string) (Repositor
 	}
 
 	return r, nil
+}
+
+func (client Client) GetRawFile(repositoryProjectKey, repositorySlug, filePath, branch string) ([]byte, error) {
+	// http://git.corp.xoom.com:7990/projects/INF/repos/stashkins-templates/browse/plat/xwa/template.xml?at=2dce5534f7163841192fcfd5324f992f5ef75540&raw
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/projects/%s/repos/%s/browse/%s?at=%s&raw", client.baseURL.String(), repositoryProjectKey, repositorySlug, filePath, branch), nil)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("stash.GetRawFile %s\n", req.URL)
+	req.SetBasicAuth(client.userName, client.password)
+
+	responseCode, data, err := consumeResponse(req)
+	if err != nil {
+		return nil, err
+	}
+	if responseCode != 200 {
+		return nil, fmt.Errorf("stash.GetRawFile() returned %d\n", responseCode)
+	}
+	return data, nil
 }
 
 func HasRepository(repositories map[int]Repository, url string) (Repository, bool) {
