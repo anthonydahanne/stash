@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -211,8 +212,7 @@ func (client Client) GetRepository(projectKey, repositorySlug string) (Repositor
 }
 
 func (client Client) GetRawFile(repositoryProjectKey, repositorySlug, filePath, branch string) ([]byte, error) {
-	// http://git.corp.xoom.com:7990/projects/INF/repos/stashkins-templates/browse/plat/xwa/template.xml?at=2dce5534f7163841192fcfd5324f992f5ef75540&raw
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/projects/%s/repos/%s/browse/%s?at=%s&raw", client.baseURL.String(), repositoryProjectKey, repositorySlug, filePath, branch), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/projects/%s/repos/%s/browse/%s?at=%s&raw", client.baseURL.String(), strings.ToLower(repositoryProjectKey), strings.ToLower(repositorySlug), filePath, branch), nil)
 	if err != nil {
 		return nil, err
 	}

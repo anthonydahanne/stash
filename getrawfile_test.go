@@ -15,7 +15,7 @@ func TestGetRawFile(t *testing.T) {
 		}
 		url := *r.URL
 
-		wantPath := "/projects/PRJ/repos/REPO/browse/foo/bar"
+		wantPath := "/projects/prj/repos/repo/browse/foo/bar"
 		if url.Path != wantPath {
 			t.Fatalf("Want %s but found %s\n", wantPath, url.Path)
 		}
