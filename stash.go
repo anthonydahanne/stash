@@ -3,6 +3,7 @@
 package stash
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -16,6 +17,7 @@ import (
 
 type (
 	Stash interface {
+		CreateRepository(projectKey, slug string) (Repository, error)
 		GetRepositories() (map[int]Repository, error)
 		GetBranches(projectKey, repositorySlug string) (map[string]Branch, error)
 		GetRepository(projectKey, repositorySlug string) (Repository, error)
@@ -73,6 +75,12 @@ type (
 		LatestChangeSet string `json:"latestChangeset"`
 		IsDefault       bool   `json:"isDefault"`
 	}
+
+	errorResponse struct {
+		StatusCode int
+		Reason     string
+		error
+	}
 )
 
 const (
@@ -83,8 +91,51 @@ var (
 	httpClient *http.Client = &http.Client{Timeout: 10 * time.Second}
 )
 
+func (e errorResponse) Error() string {
+	return fmt.Sprintf("%s (%d)", e.Reason, e.StatusCode)
+}
+
 func NewClient(userName, password string, baseURL *url.URL) Stash {
 	return Client{userName: userName, password: password, baseURL: baseURL}
+}
+
+func (client Client) CreateRepository(projectKey, projectSlug string) (Repository, error) {
+	slug := fmt.Sprintf(`{"name": "%s", "scmId": "git"}`, projectSlug)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos", client.baseURL.String(), projectKey), bytes.NewBuffer([]byte(slug)))
+	if err != nil {
+		return Repository{}, err
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-type", "application/json")
+	req.SetBasicAuth(client.userName, client.password)
+
+	responseCode, data, err := consumeResponse(req)
+	if err != nil {
+		return Repository{}, err
+	}
+	if responseCode != http.StatusCreated {
+		var reason string = "unknown reason"
+		switch {
+		case responseCode == http.StatusBadRequest:
+			reason = "The repository was not created due to a validation error."
+		case responseCode == http.StatusUnauthorized:
+			reason = "The currently authenticated user has insufficient permissions to create a repository."
+		case responseCode == http.StatusNotFound:
+			reason = "The resource was not found.  Does the project key exist?"
+		case responseCode == http.StatusConflict:
+			reason = "A repository with same name already exists."
+		}
+		return Repository{}, errorResponse{StatusCode: responseCode, Reason: reason}
+	}
+
+	var t Repository
+	err = json.Unmarshal(data, &t)
+	if err != nil {
+		return Repository{}, err
+	}
+
+	return t, nil
 }
 
 // GetRepositories returns a map of repositories indexed by repository URL.
@@ -111,7 +162,7 @@ func (client Client) GetRepositories() (map[int]Repository, error) {
 			case responseCode == http.StatusBadRequest:
 				reason = "Bad request."
 			}
-			return nil, fmt.Errorf("Error getting repositories: %s.  Status code: %d.  Reason: %s\n", string(data), responseCode, reason)
+			return nil, errorResponse{StatusCode: responseCode, Reason: reason}
 		}
 
 		var r Repositories
@@ -157,7 +208,7 @@ func (client Client) GetBranches(projectKey, repositorySlug string) (map[string]
 			case responseCode == http.StatusUnauthorized:
 				reason = "Unauthorized"
 			}
-			return nil, fmt.Errorf("Error getting repository branches: %s.  Status code: %d.  Reason: %s\n", string(data), responseCode, reason)
+			return nil, errorResponse{StatusCode: responseCode, Reason: reason}
 		}
 
 		var r Branches
@@ -199,7 +250,7 @@ func (client Client) GetRepository(projectKey, repositorySlug string) (Repositor
 		case responseCode == http.StatusUnauthorized:
 			reason = "Unauthorized"
 		}
-		return Repository{}, fmt.Errorf("Error getting repository: %s.  Status code: %d.  Reason: %s\n", string(data), responseCode, reason)
+		return Repository{}, errorResponse{StatusCode: responseCode, Reason: reason}
 	}
 
 	var r Repository
@@ -223,8 +274,15 @@ func (client Client) GetRawFile(repositoryProjectKey, repositorySlug, filePath, 
 	if err != nil {
 		return nil, err
 	}
-	if responseCode != 200 {
-		return nil, fmt.Errorf("stash.GetRawFile() returned %d\n", responseCode)
+	if responseCode != http.StatusOK {
+		var reason string = "unhandled reason"
+		switch {
+		case responseCode == http.StatusNotFound:
+			reason = "Not found"
+		case responseCode == http.StatusUnauthorized:
+			reason = "Unauthorized"
+		}
+		return nil, errorResponse{StatusCode: responseCode, Reason: reason}
 	}
 	return data, nil
 }
@@ -238,6 +296,26 @@ func HasRepository(repositories map[int]Repository, url string) (Repository, boo
 		}
 	}
 	return Repository{}, false
+}
+
+func IsRepositoryExists(err error) bool {
+	if err == nil {
+		return false
+	}
+	if response, ok := err.(errorResponse); ok {
+		return response.StatusCode == http.StatusConflict
+	}
+	return false
+}
+
+func IsRepositoryNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	if response, ok := err.(errorResponse); ok {
+		return response.StatusCode == http.StatusNotFound
+	}
+	return false
 }
 
 func consumeResponse(req *http.Request) (rc int, buffer []byte, err error) {
