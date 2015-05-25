@@ -1,0 +1,10 @@
+{
+	"ImportPath": "github.com/xoom/stash",
+	"GoVersion": "go1.4.1",
+	"Deps": [
+		{
+			"ImportPath": "github.com/ae6rt/retry",
+			"Rev": "2267ae96e539a79c4db9c0191d3087a9f3397358"
+		}
+	]
+}
