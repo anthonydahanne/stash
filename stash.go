@@ -141,13 +141,13 @@ func (client Client) CreateRepository(projectKey, projectSlug string) (Repositor
 
 // GetRepositories returns a map of repositories indexed by repository URL.
 func (client Client) GetRepositories() (map[int]Repository, error) {
-	retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
-
 	start := 0
 	repositories := make(map[int]Repository)
-	work := func() error {
-		morePages := true
-		for morePages {
+	morePages := true
+	for morePages {
+		retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
+		var data []byte
+		work := func() error {
 			req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/repos?start=%d&limit=%d", client.baseURL.String(), start, stashPageLimit), nil)
 			if err != nil {
 				return err
@@ -156,7 +156,8 @@ func (client Client) GetRepositories() (map[int]Repository, error) {
 			req.Header.Set("Accept", "application/json")
 			req.SetBasicAuth(client.userName, client.password)
 
-			responseCode, data, err := consumeResponse(req)
+			var responseCode int
+			responseCode, data, err = consumeResponse(req)
 			if err != nil {
 				return err
 			}
@@ -168,34 +169,35 @@ func (client Client) GetRepositories() (map[int]Repository, error) {
 				}
 				return errorResponse{StatusCode: responseCode, Reason: reason}
 			}
-
-			var r Repositories
-			err = json.Unmarshal(data, &r)
-			if err != nil {
-				return err
-			}
-
-			for _, repo := range r.Repository {
-				repositories[repo.ID] = repo
-			}
-
-			morePages = !r.IsLastPage
-			start = r.NextPageStart
+			return nil
 		}
-		return nil
+		if err := retry.Try(work); err != nil {
+			return nil, err
+		}
+
+		var r Repositories
+		err := json.Unmarshal(data, &r)
+		if err != nil {
+			return nil, err
+		}
+		for _, repo := range r.Repository {
+			repositories[repo.ID] = repo
+		}
+		morePages = !r.IsLastPage
+		start = r.NextPageStart
 	}
-	return repositories, retry.Try(work)
+	return repositories, nil
 }
 
 // GetBranches returns a map of branches indexed by branch display name for the given repository.
 func (client Client) GetBranches(projectKey, repositorySlug string) (map[string]Branch, error) {
-	retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
-
 	start := 0
 	branches := make(map[string]Branch)
-	work := func() error {
-		morePages := true
-		for morePages {
+	morePages := true
+	for morePages {
+		var data []byte
+		retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
+		workit := func() error {
 			req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/branches?start=%d&limit=%d", client.baseURL.String(), projectKey, repositorySlug, start, stashPageLimit), nil)
 			if err != nil {
 				return err
@@ -204,7 +206,8 @@ func (client Client) GetBranches(projectKey, repositorySlug string) (map[string]
 			req.Header.Set("Accept", "application/json")
 			req.SetBasicAuth(client.userName, client.password)
 
-			responseCode, data, err := consumeResponse(req)
+			var responseCode int
+			responseCode, data, err = consumeResponse(req)
 			if err != nil {
 				return err
 			}
@@ -219,25 +222,23 @@ func (client Client) GetBranches(projectKey, repositorySlug string) (map[string]
 				}
 				return errorResponse{StatusCode: responseCode, Reason: reason}
 			}
-
-			var r Branches
-			err = json.Unmarshal(data, &r)
-			if err != nil {
-				return err
-			}
-
-			for _, branch := range r.Branch {
-				branches[branch.DisplayID] = branch
-			}
-
-			morePages = !r.IsLastPage
-			start = r.NextPageStart
+			return nil
+		}
+		if err := retry.Try(workit); err != nil {
+			return nil, err
 		}
 
-		return nil
+		var r Branches
+		if err := json.Unmarshal(data, &r); err != nil {
+			return nil, err
+		}
+		for _, branch := range r.Branch {
+			branches[branch.DisplayID] = branch
+		}
+		morePages = !r.IsLastPage
+		start = r.NextPageStart
 	}
-
-	return branches, retry.Try(work)
+	return branches, nil
 }
 
 // GetRepository returns a repository representation for the given Stash Project key and repository slug.
