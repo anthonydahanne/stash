@@ -1,4 +1,4 @@
 all:
 	go clean
-	go test
-	go install
+	godep go test
+	godep go build
