@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/ae6rt/retry"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -144,37 +145,44 @@ func (client Client) GetRepositories() (map[int]Repository, error) {
 	repositories := make(map[int]Repository)
 	morePages := true
 	for morePages {
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/repos?start=%d&limit=%d", client.baseURL.String(), start, stashPageLimit), nil)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("stash.GetRepositories URL %s\n", req.URL)
-		req.Header.Set("Accept", "application/json")
-		req.SetBasicAuth(client.userName, client.password)
-
-		responseCode, data, err := consumeResponse(req)
-		if err != nil {
-			return nil, err
-		}
-		if responseCode != http.StatusOK {
-			var reason string = "unhandled reason"
-			switch {
-			case responseCode == http.StatusBadRequest:
-				reason = "Bad request."
+		retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
+		var data []byte
+		work := func() error {
+			req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/repos?start=%d&limit=%d", client.baseURL.String(), start, stashPageLimit), nil)
+			if err != nil {
+				return err
 			}
-			return nil, errorResponse{StatusCode: responseCode, Reason: reason}
+			log.Printf("stash.GetRepositories URL %s\n", req.URL)
+			req.Header.Set("Accept", "application/json")
+			req.SetBasicAuth(client.userName, client.password)
+
+			var responseCode int
+			responseCode, data, err = consumeResponse(req)
+			if err != nil {
+				return err
+			}
+			if responseCode != http.StatusOK {
+				var reason string = "unhandled reason"
+				switch {
+				case responseCode == http.StatusBadRequest:
+					reason = "Bad request."
+				}
+				return errorResponse{StatusCode: responseCode, Reason: reason}
+			}
+			return nil
+		}
+		if err := retry.Try(work); err != nil {
+			return nil, err
 		}
 
 		var r Repositories
-		err = json.Unmarshal(data, &r)
+		err := json.Unmarshal(data, &r)
 		if err != nil {
 			return nil, err
 		}
-
 		for _, repo := range r.Repository {
 			repositories[repo.ID] = repo
 		}
-
 		morePages = !r.IsLastPage
 		start = r.NextPageStart
 	}
@@ -187,17 +195,69 @@ func (client Client) GetBranches(projectKey, repositorySlug string) (map[string]
 	branches := make(map[string]Branch)
 	morePages := true
 	for morePages {
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/branches?start=%d&limit=%d", client.baseURL.String(), projectKey, repositorySlug, start, stashPageLimit), nil)
-		if err != nil {
+		var data []byte
+		retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
+		workit := func() error {
+			req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/branches?start=%d&limit=%d", client.baseURL.String(), projectKey, repositorySlug, start, stashPageLimit), nil)
+			if err != nil {
+				return err
+			}
+			log.Printf("stash.GetBranches URL %s\n", req.URL)
+			req.Header.Set("Accept", "application/json")
+			req.SetBasicAuth(client.userName, client.password)
+
+			var responseCode int
+			responseCode, data, err = consumeResponse(req)
+			if err != nil {
+				return err
+			}
+
+			if responseCode != http.StatusOK {
+				var reason string = "unhandled reason"
+				switch {
+				case responseCode == http.StatusNotFound:
+					reason = "Not found"
+				case responseCode == http.StatusUnauthorized:
+					reason = "Unauthorized"
+				}
+				return errorResponse{StatusCode: responseCode, Reason: reason}
+			}
+			return nil
+		}
+		if err := retry.Try(workit); err != nil {
 			return nil, err
 		}
-		log.Printf("stash.GetBranches URL %s\n", req.URL)
+
+		var r Branches
+		if err := json.Unmarshal(data, &r); err != nil {
+			return nil, err
+		}
+		for _, branch := range r.Branch {
+			branches[branch.DisplayID] = branch
+		}
+		morePages = !r.IsLastPage
+		start = r.NextPageStart
+	}
+	return branches, nil
+}
+
+// GetRepository returns a repository representation for the given Stash Project key and repository slug.
+func (client Client) GetRepository(projectKey, repositorySlug string) (Repository, error) {
+	retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
+
+	var r Repository
+	work := func() error {
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s", client.baseURL.String(), projectKey, repositorySlug), nil)
+		if err != nil {
+			return err
+		}
+		log.Printf("stash.GetRepository %s\n", req.URL)
 		req.Header.Set("Accept", "application/json")
 		req.SetBasicAuth(client.userName, client.password)
 
 		responseCode, data, err := consumeResponse(req)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		if responseCode != http.StatusOK {
@@ -208,83 +268,50 @@ func (client Client) GetBranches(projectKey, repositorySlug string) (map[string]
 			case responseCode == http.StatusUnauthorized:
 				reason = "Unauthorized"
 			}
-			return nil, errorResponse{StatusCode: responseCode, Reason: reason}
+			return errorResponse{StatusCode: responseCode, Reason: reason}
 		}
 
-		var r Branches
 		err = json.Unmarshal(data, &r)
 		if err != nil {
-			return nil, err
+			return err
 		}
-
-		for _, branch := range r.Branch {
-			branches[branch.DisplayID] = branch
-		}
-
-		morePages = !r.IsLastPage
-		start = r.NextPageStart
-	}
-	return branches, nil
-}
-
-// GetRepository returns a repository representation for the given Stash Project key and repository slug.
-func (client Client) GetRepository(projectKey, repositorySlug string) (Repository, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s", client.baseURL.String(), projectKey, repositorySlug), nil)
-	if err != nil {
-		return Repository{}, err
-	}
-	log.Printf("stash.GetRepository %s\n", req.URL)
-	req.Header.Set("Accept", "application/json")
-	req.SetBasicAuth(client.userName, client.password)
-
-	responseCode, data, err := consumeResponse(req)
-	if err != nil {
-		return Repository{}, err
+		return nil
 	}
 
-	if responseCode != http.StatusOK {
-		var reason string = "unhandled reason"
-		switch {
-		case responseCode == http.StatusNotFound:
-			reason = "Not found"
-		case responseCode == http.StatusUnauthorized:
-			reason = "Unauthorized"
-		}
-		return Repository{}, errorResponse{StatusCode: responseCode, Reason: reason}
-	}
-
-	var r Repository
-	err = json.Unmarshal(data, &r)
-	if err != nil {
-		return Repository{}, err
-	}
-
-	return r, nil
+	return r, retry.Try(work)
 }
 
 func (client Client) GetRawFile(repositoryProjectKey, repositorySlug, filePath, branch string) ([]byte, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/projects/%s/repos/%s/browse/%s?at=%s&raw", client.baseURL.String(), strings.ToLower(repositoryProjectKey), strings.ToLower(repositorySlug), filePath, branch), nil)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("stash.GetRawFile %s\n", req.URL)
-	req.SetBasicAuth(client.userName, client.password)
+	retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
 
-	responseCode, data, err := consumeResponse(req)
-	if err != nil {
-		return nil, err
-	}
-	if responseCode != http.StatusOK {
-		var reason string = "unhandled reason"
-		switch {
-		case responseCode == http.StatusNotFound:
-			reason = "Not found"
-		case responseCode == http.StatusUnauthorized:
-			reason = "Unauthorized"
+	var data []byte
+	work := func() error {
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/projects/%s/repos/%s/browse/%s?at=%s&raw", client.baseURL.String(), strings.ToLower(repositoryProjectKey), strings.ToLower(repositorySlug), filePath, branch), nil)
+		if err != nil {
+			return err
 		}
-		return nil, errorResponse{StatusCode: responseCode, Reason: reason}
+		log.Printf("stash.GetRawFile %s\n", req.URL)
+		req.SetBasicAuth(client.userName, client.password)
+
+		var responseCode int
+		responseCode, data, err = consumeResponse(req)
+		if err != nil {
+			return err
+		}
+		if responseCode != http.StatusOK {
+			var reason string = "unhandled reason"
+			switch {
+			case responseCode == http.StatusNotFound:
+				reason = "Not found"
+			case responseCode == http.StatusUnauthorized:
+				reason = "Unauthorized"
+			}
+			return errorResponse{StatusCode: responseCode, Reason: reason}
+		}
+		return nil
 	}
-	return data, nil
+
+	return data, retry.Try(work)
 }
 
 func HasRepository(repositories map[int]Repository, url string) (Repository, bool) {
