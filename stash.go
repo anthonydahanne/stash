@@ -321,7 +321,6 @@ func (client Client) GetPullRequests(projectKey, projectSlug, state string) ([]P
 			if err != nil {
 				return err
 			}
-			log.Printf("stash.GetPullRequests URL %s\n", req.URL)
 			req.Header.Set("Accept", "application/json")
 			req.SetBasicAuth(client.userName, client.password)
 
