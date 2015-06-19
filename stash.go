@@ -22,6 +22,7 @@ type (
 		GetRepositories() (map[int]Repository, error)
 		GetBranches(projectKey, repositorySlug string) (map[string]Branch, error)
 		GetRepository(projectKey, repositorySlug string) (Repository, error)
+		GetPullRequests(projectKey, repositorySlug string) ([]PullRequest, error)
 		GetRawFile(projectKey, repositorySlug, branch, filePath string) ([]byte, error)
 	}
 
@@ -30,6 +31,13 @@ type (
 		password string
 		baseURL  *url.URL
 		Stash
+	}
+
+	Page struct {
+		IsLastPage    bool `json:"isLastPage"`
+		Size          int  `json:"size"`
+		Start         int  `json:"start"`
+		NextPageStart int  `json:"nextPageStart"`
 	}
 
 	Repositories struct {
@@ -75,6 +83,26 @@ type (
 		DisplayID       string `json:"displayId"`
 		LatestChangeSet string `json:"latestChangeset"`
 		IsDefault       bool   `json:"isDefault"`
+	}
+
+	PullRequests struct {
+		Page
+		PullRequests []PullRequest `json:"values"`
+	}
+
+	PullRequest struct {
+		ID          int    `id:"closed"`
+		Closed      bool   `json:"closed"`
+		Open        bool   `json:"open"`
+		State       string `json:"state"`
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		FromRef     Ref    `json:"fromRef"`
+		ToRef       Ref    `json:"toRef"`
+	}
+
+	Ref struct {
+		DisplayID string `json:"displayId"`
 	}
 
 	errorResponse struct {
@@ -279,6 +307,56 @@ func (client Client) GetRepository(projectKey, repositorySlug string) (Repositor
 	}
 
 	return r, retry.Try(work)
+}
+
+// GetPullRequests returns a list of pull requests for a project / slug.
+func (client Client) GetPullRequests(projectKey, projectSlug string) ([]PullRequest, error) {
+	start := 0
+	pullRequests := make([]PullRequest, 0)
+	morePages := true
+	for morePages {
+		retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
+		var data []byte
+		work := func() error {
+			req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/pull-requests?start=%d&limit=%d", client.baseURL.String(), projectKey, projectSlug, start, stashPageLimit), nil)
+			if err != nil {
+				return err
+			}
+			log.Printf("stash.GetPullRequests URL %s\n", req.URL)
+			req.Header.Set("Accept", "application/json")
+			req.SetBasicAuth(client.userName, client.password)
+
+			var responseCode int
+			responseCode, data, err = consumeResponse(req)
+			if err != nil {
+				return err
+			}
+			if responseCode != http.StatusOK {
+				var reason string = "unhandled reason"
+				switch {
+				case responseCode == http.StatusBadRequest:
+					reason = "Bad request."
+				}
+				return errorResponse{StatusCode: responseCode, Reason: reason}
+			}
+			return nil
+		}
+		if err := retry.Try(work); err != nil {
+			return nil, err
+		}
+
+		var r PullRequests
+		err := json.Unmarshal(data, &r)
+		if err != nil {
+			return nil, err
+		}
+		for _, pr := range r.PullRequests {
+			pullRequests = append(pullRequests, pr)
+		}
+		morePages = !r.IsLastPage
+		start = r.NextPageStart
+	}
+	return pullRequests, nil
 }
 
 func (client Client) GetRawFile(repositoryProjectKey, repositorySlug, filePath, branch string) ([]byte, error) {
