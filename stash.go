@@ -230,7 +230,6 @@ func (client Client) GetBranches(projectKey, repositorySlug string) (map[string]
 			if err != nil {
 				return err
 			}
-			log.Printf("stash.GetBranches URL %s\n", req.URL)
 			req.Header.Set("Accept", "application/json")
 			req.SetBasicAuth(client.userName, client.password)
 
