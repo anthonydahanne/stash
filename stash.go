@@ -22,7 +22,7 @@ type (
 		GetRepositories() (map[int]Repository, error)
 		GetBranches(projectKey, repositorySlug string) (map[string]Branch, error)
 		GetRepository(projectKey, repositorySlug string) (Repository, error)
-		GetPullRequests(projectKey, repositorySlug string) ([]PullRequest, error)
+		GetPullRequests(projectKey, repositorySlug, state string) ([]PullRequest, error)
 		GetRawFile(projectKey, repositorySlug, branch, filePath string) ([]byte, error)
 	}
 
@@ -310,7 +310,7 @@ func (client Client) GetRepository(projectKey, repositorySlug string) (Repositor
 }
 
 // GetPullRequests returns a list of pull requests for a project / slug.
-func (client Client) GetPullRequests(projectKey, projectSlug string) ([]PullRequest, error) {
+func (client Client) GetPullRequests(projectKey, projectSlug, state string) ([]PullRequest, error) {
 	start := 0
 	pullRequests := make([]PullRequest, 0)
 	morePages := true
@@ -318,7 +318,7 @@ func (client Client) GetPullRequests(projectKey, projectSlug string) ([]PullRequ
 		retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
 		var data []byte
 		work := func() error {
-			req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/pull-requests?start=%d&limit=%d", client.baseURL.String(), projectKey, projectSlug, start, stashPageLimit), nil)
+			req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/pull-requests?state=%s&start=%d&limit=%d", client.baseURL.String(), projectKey, projectSlug, state, start, stashPageLimit), nil)
 			if err != nil {
 				return err
 			}
