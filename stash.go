@@ -4,6 +4,7 @@ package stash
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/ae6rt/retry"
@@ -117,7 +118,13 @@ const (
 )
 
 var (
-	httpClient *http.Client = &http.Client{Timeout: 10 * time.Second}
+	httpTransport = &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+)
+
+var (
+	httpClient *http.Client = &http.Client{Timeout: 10 * time.Second, Transport: httpTransport}
 )
 
 func (e errorResponse) Error() string {
