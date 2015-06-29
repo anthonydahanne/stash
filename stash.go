@@ -22,6 +22,7 @@ type (
 		CreateRepository(projectKey, slug string) (Repository, error)
 		GetRepositories() (map[int]Repository, error)
 		GetBranches(projectKey, repositorySlug string) (map[string]Branch, error)
+		GetBranchPermissions(projectKey, repositorySlug string) (BranchPermissions, error)
 		GetRepository(projectKey, repositorySlug string) (Repository, error)
 		GetPullRequests(projectKey, repositorySlug, state string) ([]PullRequest, error)
 		GetRawFile(projectKey, repositorySlug, branch, filePath string) ([]byte, error)
@@ -84,6 +85,13 @@ type (
 		DisplayID       string `json:"displayId"`
 		LatestChangeSet string `json:"latestChangeset"`
 		IsDefault       bool   `json:"isDefault"`
+	}
+
+	BranchPermissions struct {
+		Type              string `json:"type"`
+		MatcherType       string `json:"matcherType"`
+		MatcherId string `json:"matcherId"`
+		Effective       bool   `json:"effective"`
 	}
 
 	PullRequests struct {
@@ -313,6 +321,46 @@ func (client Client) GetRepository(projectKey, repositorySlug string) (Repositor
 	}
 
 	return r, retry.Try(work)
+}
+
+// GetRepository returns a repository representation for the given Stash Project key and repository slug.
+func (client Client) GetBranchPermissions(projectKey, repositorySlug string) (BranchPermissions, error) {
+	retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
+
+	var branchPermissions BranchPermissions
+	work := func() error {
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/branch-permissions/1.0/projects/%s/repos/%s/permitted", client.baseURL.String(), projectKey, repositorySlug), nil)
+		if err != nil {
+			return err
+		}
+		log.Printf("stash.GetBranchPermissions %s\n", req.URL)
+		req.Header.Set("Accept", "application/json")
+		req.SetBasicAuth(client.userName, client.password)
+
+		responseCode, data, err := consumeResponse(req)
+		if err != nil {
+			return err
+		}
+
+		if responseCode != http.StatusOK {
+			var reason string = "unhandled reason"
+			switch {
+			case responseCode == http.StatusNotFound:
+				reason = "Not found"
+			case responseCode == http.StatusUnauthorized:
+				reason = "Unauthorized"
+			}
+			return errorResponse{StatusCode: responseCode, Reason: reason}
+		}
+
+		err = json.Unmarshal(data, &branchPermissions)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	return branchPermissions, retry.Try(work)
 }
 
 // GetPullRequests returns a list of pull requests for a project / slug.
