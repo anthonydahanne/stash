@@ -94,7 +94,7 @@ type (
 
 	Permitted struct {
 		RestrictedId int `json:"restrictedId"`
-		User         User
+		User           User `json:"user"`
 	}
 
 	PullRequests struct {
@@ -356,7 +356,7 @@ func (client Client) GetBranchPermissions(projectKey, repositorySlug string) (Pe
 			return errorResponse{StatusCode: responseCode, Reason: reason}
 		}
 
-		log.Printf("%v", json)
+		log.Printf("%v", string(data))
 		err = json.Unmarshal(data, &branchPermissions)
 		if err != nil {
 			return err
