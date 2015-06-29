@@ -22,7 +22,7 @@ type (
 		CreateRepository(projectKey, slug string) (Repository, error)
 		GetRepositories() (map[int]Repository, error)
 		GetBranches(projectKey, repositorySlug string) (map[string]Branch, error)
-		GetBranchPermissions(projectKey, repositorySlug string) (BranchPermissions, error)
+		GetBranchPermissions(projectKey, repositorySlug string) (Permitted, error)
 		GetRepository(projectKey, repositorySlug string) (Repository, error)
 		GetPullRequests(projectKey, repositorySlug, state string) ([]PullRequest, error)
 		GetRawFile(projectKey, repositorySlug, branch, filePath string) ([]byte, error)
@@ -87,11 +87,14 @@ type (
 		IsDefault       bool   `json:"isDefault"`
 	}
 
-	BranchPermissions struct {
-		Type              string `json:"type"`
-		MatcherType       string `json:"matcherType"`
-		MatcherId string `json:"matcherId"`
-		Effective       bool   `json:"effective"`
+	User struct {
+		Name string `json:"name"`
+		Id   int `json:"id"`
+	}
+
+	Permitted struct {
+		RestrictedId int `json:"restrictedId"`
+		User         User
 	}
 
 	PullRequests struct {
@@ -324,10 +327,10 @@ func (client Client) GetRepository(projectKey, repositorySlug string) (Repositor
 }
 
 // GetRepository returns a repository representation for the given Stash Project key and repository slug.
-func (client Client) GetBranchPermissions(projectKey, repositorySlug string) (BranchPermissions, error) {
+func (client Client) GetBranchPermissions(projectKey, repositorySlug string) (Permitted, error) {
 	retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
 
-	var branchPermissions BranchPermissions
+	var branchPermissions Permitted
 	work := func() error {
 		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/branch-permissions/1.0/projects/%s/repos/%s/permitted", client.baseURL.String(), projectKey, repositorySlug), nil)
 		if err != nil {

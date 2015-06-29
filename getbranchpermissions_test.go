@@ -10,12 +10,37 @@ import (
 
 const branchPermissionsResponse string = `
 {
-   "type" : "type",
-   "matcherType" : "matcherType",
-   "matcherId" : "matcherId",
-   "effective" : true
-}
-`
+  "size": 1,
+  "limit": 5000,
+  "isLastPage": true,
+  "values": [
+    {
+      "restrictedId": 41,
+      "user": {
+        "name": "branchlock",
+        "emailAddress": "branchlock@xoom.com",
+        "id": 1801,
+        "displayName": "branch lock",
+        "active": true,
+        "slug": "branchlock",
+        "type": "NORMAL",
+        "link": {
+          "url": "/users/branchlock",
+          "rel": "self"
+        },
+        "links": {
+          "self": [
+            {
+              "href": "https://git.corp.xoom.com/users/branchlock"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "start": 0,
+  "filter": null
+}`
 
 func TestGetBranchPermissions(t *testing.T) {
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -44,17 +69,14 @@ func TestGetBranchPermissions(t *testing.T) {
 	}
 
 	// spot checks
-	if branchPermissions.Type != "type" {
-		t.Fatalf("Want type but got %s\n", branchPermissions.Type)
+	if branchPermissions.RestrictedId != 41 {
+		t.Fatalf("Want 41 but got %s\n", branchPermissions.RestrictedId)
 	}
-	if branchPermissions.MatcherType != "matcherType" {
-		t.Fatalf("Want matcherType but got %s\n", branchPermissions.MatcherType)
+	if branchPermissions.User.Id != 1801 {
+		t.Fatalf("Want matcherType but got %s\n", branchPermissions.User.Id)
 	}
-	if branchPermissions.MatcherId != "matcherId" {
-		t.Fatalf("Want matcherId but got %s\n", branchPermissions.MatcherId)
-	}
-	if !branchPermissions.Effective {
-		t.Fatalf("Want true but got %s\n", branchPermissions.Effective)
+	if branchPermissions.User.Name != "branchlock" {
+		t.Fatalf("Want branchlock but got %s\n", branchPermissions.User.Name)
 	}
 }
 
