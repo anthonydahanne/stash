@@ -69,14 +69,14 @@ func TestGetBranchPermissions(t *testing.T) {
 	}
 
 	// spot checks
-	if branchPermissions.RestrictedId != 41 {
-		t.Fatalf("Want 41 but got %s\n", branchPermissions.RestrictedId)
+	if branchPermissions.Permitted[0].RestrictedId != 41 {
+		t.Fatalf("Want 41 but got %s\n", branchPermissions.Permitted[0].RestrictedId)
 	}
-	if branchPermissions.User.Id != 1801 {
-		t.Fatalf("Want matcherType but got %s\n", branchPermissions.User.Id)
+	if branchPermissions.Permitted[0].User.Id != 1801 {
+		t.Fatalf("Want matcherType but got %s\n", branchPermissions.Permitted[0].User.Id)
 	}
-	if branchPermissions.User.Name != "branchlock" {
-		t.Fatalf("Want branchlock but got %s\n", branchPermissions.User.Name)
+	if branchPermissions.Permitted[0].User.Name != "branchlock" {
+		t.Fatalf("Want branchlock but got %s\n", branchPermissions.Permitted[0].User.Name)
 	}
 }
 
