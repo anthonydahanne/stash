@@ -22,7 +22,7 @@ type (
 		CreateRepository(projectKey, slug string) (Repository, error)
 		GetRepositories() (map[int]Repository, error)
 		GetBranches(projectKey, repositorySlug string) (map[string]Branch, error)
-		GetBranchPermissions(projectKey, repositorySlug string) (BranchPermissions, error)
+		GetBranchRestrictions(projectKey, repositorySlug string) (BranchRestrictions, error)
 		GetRepository(projectKey, repositorySlug string) (Repository, error)
 		GetPullRequests(projectKey, repositorySlug, state string) ([]PullRequest, error)
 		GetRawFile(projectKey, repositorySlug, branch, filePath string) ([]byte, error)
@@ -87,18 +87,12 @@ type (
 		IsDefault       bool   `json:"isDefault"`
 	}
 
-	User struct {
-		Name string `json:"name"`
-		Id   int `json:"id"`
+	BranchRestrictions struct {
+		BranchRestriction []BranchRestriction `json:"values"`
 	}
 
-	Permitted struct {
-		RestrictedId int `json:"restrictedId"`
-		User           User `json:"user"`
-	}
-
-	BranchPermissions struct {
-		Permitted	[]Permitted `json:"values"`
+	BranchRestriction struct {
+		Branch Branch `json:"branch"`
 	}
 
 	PullRequests struct {
@@ -331,12 +325,12 @@ func (client Client) GetRepository(projectKey, repositorySlug string) (Repositor
 }
 
 // GetRepository returns a repository representation for the given Stash Project key and repository slug.
-func (client Client) GetBranchPermissions(projectKey, repositorySlug string) (BranchPermissions, error) {
+func (client Client) GetBranchPermissions(projectKey, repositorySlug string) (BranchRestrictions, error) {
 	retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
 
-	var branchPermissions BranchPermissions
+	var branchRestrictions BranchRestrictions
 	work := func() error {
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/branch-permissions/1.0/projects/%s/repos/%s/permitted", client.baseURL.String(), projectKey, repositorySlug), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/branch-permissions/1.0/projects/%s/repos/%s/restricted", client.baseURL.String(), projectKey, repositorySlug), nil)
 		if err != nil {
 			return err
 		}
@@ -360,14 +354,15 @@ func (client Client) GetBranchPermissions(projectKey, repositorySlug string) (Br
 			return errorResponse{StatusCode: responseCode, Reason: reason}
 		}
 
-		err = json.Unmarshal(data, &branchPermissions)
+		fmt.Printf("data: %s", string(data))
+		err = json.Unmarshal(data, &branchRestrictions)
 		if err != nil {
 			return err
 		}
 		return nil
 	}
 
-	return branchPermissions, retry.Try(work)
+	return branchRestrictions, retry.Try(work)
 }
 
 // GetPullRequests returns a list of pull requests for a project / slug.

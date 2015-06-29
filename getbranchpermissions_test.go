@@ -11,36 +11,25 @@ import (
 const branchPermissionsResponse string = `
 {
   "size": 1,
-  "limit": 5000,
+  "limit": 100,
   "isLastPage": true,
   "values": [
     {
-      "restrictedId": 41,
-      "user": {
-        "name": "branchlock",
-        "emailAddress": "branchlock@xoom.com",
-        "id": 1801,
-        "displayName": "branch lock",
-        "active": true,
-        "slug": "branchlock",
-        "type": "NORMAL",
-        "link": {
-          "url": "/users/branchlock",
-          "rel": "self"
-        },
-        "links": {
-          "self": [
-            {
-              "href": "https://git.corp.xoom.com/users/branchlock"
-            }
-          ]
-        }
+      "id": 41,
+      "type": "BRANCH",
+      "value": "refs/heads/develop",
+      "branch": {
+        "id": "refs/heads/develop",
+        "displayId": "develop",
+        "latestChangeset": "d81c71b179c08715eb21251824635ce9a1d7f6f3",
+        "isDefault": false
       }
     }
   ],
   "start": 0,
   "filter": null
-}`
+}
+`
 
 func TestGetBranchPermissions(t *testing.T) {
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -48,8 +37,8 @@ func TestGetBranchPermissions(t *testing.T) {
 			t.Fatalf("wanted GET but found %s\n", r.Method)
 		}
 		url := *r.URL
-		if url.Path != "/rest/branch-permissions/1.0/projects/PROJ/repos/slug/permitted" {
-			t.Fatalf("GetBranchPermissions() URL path expected to be /rest/branch-permissions/1.0/projects/PROJ/repos/slug/permitted but found %s\n", url.Path)
+		if url.Path != "/rest/branch-permissions/1.0/projects/PROJ/repos/slug/restricted" {
+			t.Fatalf("GetBranchPermissions() URL path expected to be /rest/branch-permissions/1.0/projects/PROJ/repos/slug/restricted but found %s\n", url.Path)
 		}
 		if r.Header.Get("Accept") != "application/json" {
 			t.Fatalf("GetBranchPermissions() expected request Accept header to be application/json but found %s\n", r.Header.Get("Accept"))
@@ -63,20 +52,16 @@ func TestGetBranchPermissions(t *testing.T) {
 
 	url, _ := url.Parse(testServer.URL)
 	stashClient := NewClient("u", "p", url)
-	branchPermissions, err := stashClient.GetBranchPermissions("PROJ", "slug")
+	branchRestrictions, err := stashClient.GetBranchRestrictions("PROJ", "slug")
 	if err != nil {
 		t.Fatalf("Not expecting error: %v\n", err)
 	}
 
+	fmt.Printf("\n%+v\n", branchRestrictions)
+
 	// spot checks
-	if branchPermissions.Permitted[0].RestrictedId != 41 {
-		t.Fatalf("Want 41 but got %s\n", branchPermissions.Permitted[0].RestrictedId)
-	}
-	if branchPermissions.Permitted[0].User.Id != 1801 {
-		t.Fatalf("Want matcherType but got %s\n", branchPermissions.Permitted[0].User.Id)
-	}
-	if branchPermissions.Permitted[0].User.Name != "branchlock" {
-		t.Fatalf("Want branchlock but got %s\n", branchPermissions.Permitted[0].User.Name)
+	if branchRestrictions.BranchRestriction[0].Branch.DisplayID != "develop" {
+		t.Fatalf("Want branchlock but got %s\n", branchRestrictions.BranchRestriction[0].Branch.DisplayID)
 	}
 }
 
