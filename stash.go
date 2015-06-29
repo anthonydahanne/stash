@@ -356,6 +356,7 @@ func (client Client) GetBranchPermissions(projectKey, repositorySlug string) (Pe
 			return errorResponse{StatusCode: responseCode, Reason: reason}
 		}
 
+		log.Printf("%v", json)
 		err = json.Unmarshal(data, &branchPermissions)
 		if err != nil {
 			return err
