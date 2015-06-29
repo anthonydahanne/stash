@@ -57,8 +57,6 @@ func TestGetBranchPermissions(t *testing.T) {
 		t.Fatalf("Not expecting error: %v\n", err)
 	}
 
-	fmt.Printf("\n%+v\n", branchRestrictions)
-
 	// spot checks
 	if branchRestrictions.BranchRestriction[0].Branch.DisplayID != "develop" {
 		t.Fatalf("Want branchlock but got %s\n", branchRestrictions.BranchRestriction[0].Branch.DisplayID)

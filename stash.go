@@ -325,7 +325,7 @@ func (client Client) GetRepository(projectKey, repositorySlug string) (Repositor
 }
 
 // GetRepository returns a repository representation for the given Stash Project key and repository slug.
-func (client Client) GetBranchPermissions(projectKey, repositorySlug string) (BranchRestrictions, error) {
+func (client Client) GetBranchRestrictions(projectKey, repositorySlug string) (BranchRestrictions, error) {
 	retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
 
 	var branchRestrictions BranchRestrictions
@@ -354,7 +354,6 @@ func (client Client) GetBranchPermissions(projectKey, repositorySlug string) (Br
 			return errorResponse{StatusCode: responseCode, Reason: reason}
 		}
 
-		fmt.Printf("data: %s", string(data))
 		err = json.Unmarshal(data, &branchRestrictions)
 		if err != nil {
 			return err
