@@ -93,6 +93,7 @@ type (
 	}
 
 	BranchRestriction struct {
+		Id		  int		 `json:"id"`
 		Branch Branch `json:"branch"`
 	}
 
