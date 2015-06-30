@@ -23,6 +23,7 @@ type (
 		GetRepositories() (map[int]Repository, error)
 		GetBranches(projectKey, repositorySlug string) (map[string]Branch, error)
 		GetBranchRestrictions(projectKey, repositorySlug string) (BranchRestrictions, error)
+		DeleteBranchRestriction(projectKey, repositorySlug string, id int) (error)
 		GetRepository(projectKey, repositorySlug string) (Repository, error)
 		GetPullRequests(projectKey, repositorySlug, state string) ([]PullRequest, error)
 		GetRawFile(projectKey, repositorySlug, branch, filePath string) ([]byte, error)
@@ -324,7 +325,6 @@ func (client Client) GetRepository(projectKey, repositorySlug string) (Repositor
 	return r, retry.Try(work)
 }
 
-// GetRepository returns a repository representation for the given Stash Project key and repository slug.
 func (client Client) GetBranchRestrictions(projectKey, repositorySlug string) (BranchRestrictions, error) {
 	retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
 
@@ -334,7 +334,7 @@ func (client Client) GetBranchRestrictions(projectKey, repositorySlug string) (B
 		if err != nil {
 			return err
 		}
-		log.Printf("stash.GetBranchPermissions %s\n", req.URL)
+		log.Printf("stash.GetBranchRestrictions %s\n", req.URL)
 		req.Header.Set("Accept", "application/json")
 		req.SetBasicAuth(client.userName, client.password)
 
@@ -362,6 +362,41 @@ func (client Client) GetBranchRestrictions(projectKey, repositorySlug string) (B
 	}
 
 	return branchRestrictions, retry.Try(work)
+}
+
+// GetRepository returns a repository representation for the given Stash Project key and repository slug.
+func (client Client) DeleteBranchRestriction(projectKey, repositorySlug string, id int) (error) {
+	retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
+
+	work := func() error {
+		req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/rest/branch-permissions/1.0/projects/%s/repos/%s/restricted/%d", client.baseURL.String(), projectKey, repositorySlug, id), nil)
+		if err != nil {
+			return err
+		}
+		log.Printf("stash.DeleteBranchRestriction %s\n", req.URL)
+		req.Header.Set("Accept", "application/json")
+		req.SetBasicAuth(client.userName, client.password)
+
+		responseCode, _, err := consumeResponse(req)
+		if err != nil {
+			return err
+		}
+
+		if responseCode != http.StatusNoContent {
+			var reason string = "unhandled reason"
+			switch {
+			case responseCode == http.StatusNotFound:
+				reason = "Not found"
+			case responseCode == http.StatusUnauthorized:
+				reason = "Unauthorized"
+			}
+			return errorResponse{StatusCode: responseCode, Reason: reason}
+		}
+
+		return nil
+	}
+
+	return retry.Try(work)
 }
 
 // GetPullRequests returns a list of pull requests for a project / slug.

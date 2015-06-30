@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-const branchPermissionsResponse string = `
+const branchRestrictionsResponse string = `
 {
   "size": 1,
   "limit": 100,
@@ -31,7 +31,7 @@ const branchPermissionsResponse string = `
 }
 `
 
-func TestGetBranchPermissions(t *testing.T) {
+func TestGetBranchRestrictions(t *testing.T) {
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			t.Fatalf("wanted GET but found %s\n", r.Method)
@@ -41,12 +41,12 @@ func TestGetBranchPermissions(t *testing.T) {
 			t.Fatalf("GetBranchPermissions() URL path expected to be /rest/branch-permissions/1.0/projects/PROJ/repos/slug/restricted but found %s\n", url.Path)
 		}
 		if r.Header.Get("Accept") != "application/json" {
-			t.Fatalf("GetBranchPermissions() expected request Accept header to be application/json but found %s\n", r.Header.Get("Accept"))
+			t.Fatalf("GetBranchRestrictions() expected request Accept header to be application/json but found %s\n", r.Header.Get("Accept"))
 		}
 		if r.Header.Get("Authorization") != "Basic dTpw" {
-			t.Fatalf("Want  Basic dTpw but found %s\n", r.Header.Get("Authorization"))
+			t.Fatalf("Want Basic dTpw but found %s\n", r.Header.Get("Authorization"))
 		}
-		fmt.Fprintln(w, branchPermissionsResponse)
+		fmt.Fprintln(w, branchRestrictionsResponse)
 	}))
 	defer testServer.Close()
 
@@ -63,30 +63,30 @@ func TestGetBranchPermissions(t *testing.T) {
 	}
 }
 
-//func TestGetBranchPermissions404(t *testing.T) {
-//	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-//		w.WriteHeader(404)
-//	}))
-//	defer testServer.Close()
-//
-//	url, _ := url.Parse(testServer.URL)
-//	stashClient := NewClient("u", "p", url)
-//	_, err := stashClient.GetRepository("PROJ", "slug")
-//	if err == nil {
-//		t.Fatalf("Expecting error but did not get one\n")
-//	}
-//}
-//
-//func TestGetBranchPermissions401(t *testing.T) {
-//	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-//		w.WriteHeader(401)
-//	}))
-//	defer testServer.Close()
-//
-//	url, _ := url.Parse(testServer.URL)
-//	stashClient := NewClient("u", "p", url)
-//	_, err := stashClient.GetRepository("PROJ", "slug")
-//	if err == nil {
-//		t.Fatalf("Expecting error but did not get one\n")
-//	}
-//}
+func TestGetBranchRestrictions404(t *testing.T) {
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(404)
+	}))
+	defer testServer.Close()
+
+	url, _ := url.Parse(testServer.URL)
+	stashClient := NewClient("u", "p", url)
+	_, err := stashClient.GetBranchRestrictions("PROJ", "slug")
+	if err == nil {
+		t.Fatalf("Expecting error but did not get one\n")
+	}
+}
+
+func TestGetBranchRestrictions401(t *testing.T) {
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(401)
+	}))
+	defer testServer.Close()
+
+	url, _ := url.Parse(testServer.URL)
+	stashClient := NewClient("u", "p", url)
+	_, err := stashClient.GetBranchRestrictions("PROJ", "slug")
+	if err == nil {
+		t.Fatalf("Expecting error but did not get one\n")
+	}
+}
