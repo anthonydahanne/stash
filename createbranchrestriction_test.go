@@ -10,14 +10,15 @@ import (
 
 const createBranchRestrictionsResponse string = `
 {
-  "id": 41,
-  "type": "BRANCH",
-  "value": "refs/heads/develop",
-  "branch": {
-	"id": "refs/heads/develop",
-	"displayId": "develop",
-	"latestChangeset": "d81c71b179c08715eb21251824635ce9a1d7f6f3",
-	"isDefault": false
+	"id": 41,
+	"type": "BRANCH",
+	"value": "refs/heads/develop",
+	"branch": {
+		"id": "refs/heads/develop",
+		"displayId": "develop",
+		"latestChangeset": "d81c71b179c08715eb21251824635ce9a1d7f6f3",
+		"isDefault": false
+	}
 }
 `
 
