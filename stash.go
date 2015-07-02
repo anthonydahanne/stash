@@ -22,6 +22,9 @@ type (
 		CreateRepository(projectKey, slug string) (Repository, error)
 		GetRepositories() (map[int]Repository, error)
 		GetBranches(projectKey, repositorySlug string) (map[string]Branch, error)
+		CreateBranchRestriction(projectKey, repositorySlug, branch, user string) (BranchRestriction, error)
+		GetBranchRestrictions(projectKey, repositorySlug string) (BranchRestrictions, error)
+		DeleteBranchRestriction(projectKey, repositorySlug string, id int) error
 		GetRepository(projectKey, repositorySlug string) (Repository, error)
 		GetPullRequests(projectKey, repositorySlug, state string) ([]PullRequest, error)
 		GetRawFile(projectKey, repositorySlug, branch, filePath string) ([]byte, error)
@@ -84,6 +87,22 @@ type (
 		DisplayID       string `json:"displayId"`
 		LatestChangeSet string `json:"latestChangeset"`
 		IsDefault       bool   `json:"isDefault"`
+	}
+
+	BranchRestrictions struct {
+		BranchRestriction []BranchRestriction `json:"values"`
+	}
+
+	BranchRestriction struct {
+		Id     int    `json:"id"`
+		Branch Branch `json:"branch"`
+	}
+
+	BranchPermission struct {
+		Type   string   `json:"type"`
+		Branch string   `json:"value"`
+		Users  []string `json:"users"`
+		Groups []string `json:"groups"`
 	}
 
 	PullRequests struct {
@@ -313,6 +332,131 @@ func (client Client) GetRepository(projectKey, repositorySlug string) (Repositor
 	}
 
 	return r, retry.Try(work)
+}
+
+func (client Client) CreateBranchRestriction(projectKey, repositorySlug, branch, user string) (BranchRestriction, error) {
+
+	branchPermission := BranchPermission{
+		Type:   "BRANCH",
+		Branch: branch,
+		Users:  []string{user},
+		Groups: []string{},
+	}
+
+	data, err := json.Marshal(branchPermission)
+	if err != nil {
+		return BranchRestriction{}, err
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/rest/branch-permissions/1.0/projects/%s/repos/%s/restricted", client.baseURL.String(), projectKey, repositorySlug), bytes.NewReader(data))
+	if err != nil {
+		return BranchRestriction{}, err
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-type", "application/json")
+	req.SetBasicAuth(client.userName, client.password)
+
+	responseCode, data, err := consumeResponse(req)
+	if err != nil {
+		return BranchRestriction{}, err
+	}
+	if responseCode != http.StatusOK {
+		var reason string = "unknown reason"
+		switch {
+		case responseCode == http.StatusBadRequest:
+			reason = "The branch restriction was not created due to a validation error."
+		case responseCode == http.StatusUnauthorized:
+			reason = "The currently authenticated user has insufficient permissions to create a branch restriction."
+		case responseCode == http.StatusNotFound:
+			reason = "The resource was not found.  Does the project key exist? What about the repo?  The user?  The branch?"
+		case responseCode == http.StatusConflict:
+			reason = "A branch restriction with same name already exists."
+		}
+		return BranchRestriction{}, errorResponse{StatusCode: responseCode, Reason: reason}
+	}
+
+	var t BranchRestriction
+	err = json.Unmarshal(data, &t)
+	if err != nil {
+		return BranchRestriction{}, err
+	}
+
+	return t, nil
+}
+
+func (client Client) GetBranchRestrictions(projectKey, repositorySlug string) (BranchRestrictions, error) {
+	retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
+
+	var branchRestrictions BranchRestrictions
+	work := func() error {
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/branch-permissions/1.0/projects/%s/repos/%s/restricted", client.baseURL.String(), projectKey, repositorySlug), nil)
+		if err != nil {
+			return err
+		}
+		log.Printf("stash.GetBranchRestrictions %s\n", req.URL)
+		req.Header.Set("Accept", "application/json")
+		req.SetBasicAuth(client.userName, client.password)
+
+		responseCode, data, err := consumeResponse(req)
+		if err != nil {
+			return err
+		}
+
+		if responseCode != http.StatusOK {
+			var reason string = "unhandled reason"
+			switch {
+			case responseCode == http.StatusNotFound:
+				reason = "Not found"
+			case responseCode == http.StatusUnauthorized:
+				reason = "Unauthorized"
+			}
+			return errorResponse{StatusCode: responseCode, Reason: reason}
+		}
+
+		err = json.Unmarshal(data, &branchRestrictions)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	return branchRestrictions, retry.Try(work)
+}
+
+// GetRepository returns a repository representation for the given Stash Project key and repository slug.
+func (client Client) DeleteBranchRestriction(projectKey, repositorySlug string, id int) error {
+	retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
+
+	work := func() error {
+		req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/rest/branch-permissions/1.0/projects/%s/repos/%s/restricted/%d", client.baseURL.String(), projectKey, repositorySlug, id), nil)
+		if err != nil {
+			return err
+		}
+		log.Printf("stash.DeleteBranchRestriction %s\n", req.URL)
+		req.Header.Set("Accept", "application/json")
+		req.SetBasicAuth(client.userName, client.password)
+
+		responseCode, _, err := consumeResponse(req)
+		if err != nil {
+			return err
+		}
+
+		if responseCode != http.StatusNoContent {
+			var reason string = "unhandled reason"
+			switch {
+			case responseCode == http.StatusNotFound:
+				reason = "Not found"
+			case responseCode == http.StatusUnauthorized:
+				reason = "Unauthorized"
+			}
+			return errorResponse{StatusCode: responseCode, Reason: reason}
+		}
+
+		return nil
+	}
+
+	return retry.Try(work)
 }
 
 // GetPullRequests returns a list of pull requests for a project / slug.
