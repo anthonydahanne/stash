@@ -1,11 +1,11 @@
 package stash
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
-	"fmt"
 )
 
 const createBranchRestrictionsResponse string = `

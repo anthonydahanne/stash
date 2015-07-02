@@ -99,9 +99,9 @@ type (
 	}
 
 	BranchPermission struct {
-		Type string `json:"type"`
-		Branch string `json:"value"`
-		Users []string `json:"users"`
+		Type   string   `json:"type"`
+		Branch string   `json:"value"`
+		Users  []string `json:"users"`
 		Groups []string `json:"groups"`
 	}
 
@@ -337,10 +337,10 @@ func (client Client) GetRepository(projectKey, repositorySlug string) (Repositor
 func (client Client) CreateBranchRestriction(projectKey, repositorySlug, branch, user string) (BranchRestriction, error) {
 
 	branchPermission := BranchPermission{
-		Type: "BRANCH",
+		Type:   "BRANCH",
 		Branch: branch,
-		Users: []string{user},
-		Groups: [] string{},
+		Users:  []string{user},
+		Groups: []string{},
 	}
 
 	data, err := json.Marshal(branchPermission)
