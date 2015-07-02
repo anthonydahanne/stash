@@ -28,6 +28,7 @@ type (
 		GetRepository(projectKey, repositorySlug string) (Repository, error)
 		GetPullRequests(projectKey, repositorySlug, state string) ([]PullRequest, error)
 		GetRawFile(projectKey, repositorySlug, branch, filePath string) ([]byte, error)
+		CreatePullRequest(projectKey, repositorySlug, title, description, fromRef, toRef string, reviewers []string) (PullRequest, error)
 	}
 
 	Client struct {
@@ -129,6 +130,39 @@ type (
 		StatusCode int
 		Reason     string
 		error
+	}
+
+	// Pull Request Types
+
+	User struct {
+		Name string `json:"name"`
+	}
+
+	Reviewer struct {
+		User User `json:"user"`
+	}
+
+	PullRequestProject struct {
+		Key string `json:"key"`
+	}
+
+	PullRequestRepository struct {
+		Slug    string             `json:"slug"`
+		Name    string             `json:"name,omitempty"`
+		Project PullRequestProject `json:"project"`
+	}
+
+	PullRequestRef struct {
+		Id         string                `json:"id"`
+		Repository PullRequestRepository `json:"repository"`
+	}
+
+	PullRequestResource struct {
+		Title       string         `json:"title"`
+		Description string         `json:"description"`
+		FromRef     PullRequestRef `json:"fromRef"`
+		ToRef       PullRequestRef `json:"toRef"`
+		Reviewers   []Reviewer     `json:"reviewers"`
 	}
 )
 
@@ -506,6 +540,82 @@ func (client Client) GetPullRequests(projectKey, projectSlug, state string) ([]P
 		start = r.NextPageStart
 	}
 	return pullRequests, nil
+}
+
+// CreatePullRequest creates a pull request between branches.
+func (client Client) CreatePullRequest(projectKey, repositorySlug, title, description, fromRef, toRef string, reviewers []string) (PullRequest, error) {
+
+	var revs []Reviewer
+	for _, rev := range reviewers {
+		revs = append(revs, Reviewer{
+			User: User{Name: rev},
+		})
+	}
+
+	pullRequestResource := PullRequestResource{
+		Title:       title,
+		Description: description,
+		FromRef: PullRequestRef{
+			Id: fromRef,
+			Repository: PullRequestRepository{
+				Slug: repositorySlug,
+				Project: PullRequestProject{
+					Key: projectKey,
+				},
+			},
+		},
+		ToRef: PullRequestRef{
+			Id: toRef,
+			Repository: PullRequestRepository{
+				Slug: repositorySlug,
+				Project: PullRequestProject{
+					Key: projectKey,
+				},
+			},
+		},
+		Reviewers: revs,
+	}
+
+	reqBody, err := json.Marshal(pullRequestResource)
+	if err != nil {
+		return PullRequest{}, err
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/pull-requests", client.baseURL.String(), projectKey, repositorySlug), bytes.NewBuffer(reqBody))
+	if err != nil {
+		return PullRequest{}, err
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-type", "application/json")
+	req.SetBasicAuth(client.userName, client.password)
+
+	responseCode, data, err := consumeResponse(req)
+	if err != nil {
+		return PullRequest{}, err
+	}
+	if responseCode != http.StatusCreated {
+		var reason string = "unknown reason"
+		switch {
+		case responseCode == http.StatusBadRequest:
+			reason = "The repository was not created due to a validation error."
+		case responseCode == http.StatusUnauthorized:
+			reason = "The currently authenticated user has insufficient permissions to create a repository."
+		case responseCode == http.StatusNotFound:
+			reason = "The resource was not found.  Does the project key exist?"
+		case responseCode == http.StatusConflict:
+			reason = "A repository with same name already exists."
+		}
+		return PullRequest{}, errorResponse{StatusCode: responseCode, Reason: reason}
+	}
+
+	var t PullRequest
+	err = json.Unmarshal(data, &t)
+	if err != nil {
+		return PullRequest{}, err
+	}
+
+	return t, nil
 }
 
 func (client Client) GetRawFile(repositoryProjectKey, repositorySlug, filePath, branch string) ([]byte, error) {
