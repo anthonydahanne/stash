@@ -9,13 +9,97 @@ Go package of Stash tools
 make
 ```
 
-## Use
+## Usage
 
 ```bash
 go get github.com/xoom/stash
 
 import "github.com/xoom/stash"
 ```
+
+### Client
+
+```go
+stashClient := stash.NewClient("stash_user", "stash_pwd", "http://stash-url.local:7990")
+```
+
+### CreateRepository
+
+```go
+repository, err := stashClient.CreateRepository("PROJ", "slug")
+```
+
+### GetRepositories
+
+```go
+repository, err := stashClient.GetRepository("PROJ", "slug")
+```
+
+### GetBranches
+
+```go
+branches, err := stashClient.GetBranches("PROJ", "slug")
+```
+
+### GetRepository
+
+```go
+repository, err := stashClient.GetRepository("PROJ", "slug")
+```
+
+### CreateBranchRestriction
+
+```go
+branchRestriction, err := stashClient.CreateBranchRestriction("PROJ", "slug", "develop", "user")
+```
+
+### GetBranchRestrictions
+
+```go
+branchRestrictions, err := stashClient.GetBranchRestrictions("PROJ", "slug")
+```
+
+### DeleteBranchRestriction
+
+```go
+err := stashClient.DeleteBranchRestriction("PROJ", "slug", branchRestriction.Id)
+```
+
+### GetPullRequests
+
+```go
+// get all pull requests
+pullRequests, err := stashClient.GetPullRequests("PROJ", "slug", "")
+
+// get pull request by state
+state := "OPEN"
+pullRequests, err := stashClient.GetPullRequests("PROJ", "slug", state)
+```
+
+### CreatePullRequest
+
+```go
+title     := "A Title"
+des       := "A Description"
+from      := "feature/file1"
+to        := "develop"
+reviewers := []string{"bob", "bill"}
+
+pullRequest, err := stashClient.CreatePullRequest("PROJ", "slug", title, desc, from, to, reviewers)
+```
+
+### GetRawFile
+
+```go
+filePath := "foo/bar"
+branch   := "develop"
+
+data, _ := stashClient.GetRawFile("PRJ", "slug", filePath, branch)
+
+fmt.Println(string(data))
+```
+
+### stash
 
 ## Development
 
