@@ -17,7 +17,11 @@ go get github.com/xoom/stash
 import "github.com/xoom/stash"
 ```
 
-### Client
+### Stash Rest API Documentation
+
+* [Rest APIs](https://developer.atlassian.com/stash/docs/latest/reference/rest-api.html)
+
+### NewClient
 
 ```go
 stashClient := stash.NewClient("stash_user", "stash_pwd", "http://stash-url.local:7990")
