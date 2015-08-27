@@ -7,15 +7,19 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/ae6rt/retry"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/ae6rt/retry"
 )
+
+var Log *log.Logger = log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile)
 
 type (
 	Stash interface {
@@ -240,7 +244,7 @@ func (client Client) GetRepositories() (map[int]Repository, error) {
 			if err != nil {
 				return err
 			}
-			log.Printf("stash.GetRepositories URL %s\n", req.URL)
+			Log.Printf("stash.GetRepositories URL %s\n", req.URL)
 			req.Header.Set("Accept", "application/json")
 			req.SetBasicAuth(client.userName, client.password)
 
@@ -338,7 +342,7 @@ func (client Client) GetRepository(projectKey, repositorySlug string) (Repositor
 		if err != nil {
 			return err
 		}
-		log.Printf("stash.GetRepository %s\n", req.URL)
+		Log.Printf("stash.GetRepository %s\n", req.URL)
 		req.Header.Set("Accept", "application/json")
 		req.SetBasicAuth(client.userName, client.password)
 
@@ -428,7 +432,7 @@ func (client Client) GetBranchRestrictions(projectKey, repositorySlug string) (B
 		if err != nil {
 			return err
 		}
-		log.Printf("stash.GetBranchRestrictions %s\n", req.URL)
+		Log.Printf("stash.GetBranchRestrictions %s\n", req.URL)
 		req.Header.Set("Accept", "application/json")
 		req.SetBasicAuth(client.userName, client.password)
 
@@ -467,7 +471,7 @@ func (client Client) DeleteBranchRestriction(projectKey, repositorySlug string, 
 		if err != nil {
 			return err
 		}
-		log.Printf("stash.DeleteBranchRestriction %s\n", req.URL)
+		Log.Printf("stash.DeleteBranchRestriction %s\n", req.URL)
 		req.Header.Set("Accept", "application/json")
 		req.SetBasicAuth(client.userName, client.password)
 
@@ -627,7 +631,7 @@ func (client Client) GetRawFile(repositoryProjectKey, repositorySlug, filePath, 
 		if err != nil {
 			return err
 		}
-		log.Printf("stash.GetRawFile %s\n", req.URL)
+		Log.Printf("stash.GetRawFile %s\n", req.URL)
 		req.SetBasicAuth(client.userName, client.password)
 
 		var responseCode int
@@ -692,7 +696,7 @@ func consumeResponse(req *http.Request) (rc int, buffer []byte, err error) {
 		if e := recover(); e != nil {
 			trace := make([]byte, 10*1024)
 			_ = runtime.Stack(trace, false)
-			log.Printf("%s", trace)
+			Log.Printf("%s", trace)
 			err = fmt.Errorf("%v", e)
 		}
 	}()
