@@ -4,7 +4,7 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/ae6rt/retry",
-			"Rev": "2267ae96e539a79c4db9c0191d3087a9f3397358"
+			"Rev": "ffc650e42701e5ca7fca0a197460c49722763dbf"
 		}
 	]
 }
