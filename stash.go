@@ -26,6 +26,7 @@ type (
 		CreateRepository(projectKey, slug string) (Repository, error)
 		GetRepositories() (map[int]Repository, error)
 		GetBranches(projectKey, repositorySlug string) (map[string]Branch, error)
+		GetTags(projectKey, repositorySlug string) (map[string]Tag, error)
 		CreateBranchRestriction(projectKey, repositorySlug, branch, user string) (BranchRestriction, error)
 		GetBranchRestrictions(projectKey, repositorySlug string) (BranchRestrictions, error)
 		DeleteBranchRestriction(projectKey, repositorySlug string, id int) error
@@ -92,6 +93,16 @@ type (
 		DisplayID       string `json:"displayId"`
 		LatestChangeSet string `json:"latestChangeset"`
 		IsDefault       bool   `json:"isDefault"`
+	}
+
+	Tags struct {
+		Page
+		Tags []Tag `json:"values"`
+	}
+
+	Tag struct {
+		ID        string `json:"id"`
+		DisplayID string `json:"displayId"`
 	}
 
 	BranchRestrictions struct {
@@ -330,6 +341,61 @@ func (client Client) GetBranches(projectKey, repositorySlug string) (map[string]
 		start = r.NextPageStart
 	}
 	return branches, nil
+}
+
+// GetTags returns a map of tags indexed by tag display name for the given repository.
+func (client Client) GetTags(projectKey, repositorySlug string) (map[string]Tag, error) {
+	start := 0
+	tags := make(map[string]Tag)
+	morePages := true
+	for morePages {
+		var data []byte
+		retry := retry.New(3*time.Second, 3, retry.DefaultBackoffFunc)
+		work := func() error {
+			req, err := http.NewRequest("GET", fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/tags?start=%d&limit=%d", client.baseURL.String(), projectKey, repositorySlug, start, stashPageLimit), nil)
+			if err != nil {
+				return err
+			}
+			req.Header.Set("Accept", "application/json")
+
+			// use credentials if we have them.  If not, the repository must be public.
+			if client.userName != "" && client.password != "" {
+				req.SetBasicAuth(client.userName, client.password)
+			}
+
+			var responseCode int
+			responseCode, data, err = consumeResponse(req)
+			if err != nil {
+				return err
+			}
+
+			if responseCode != http.StatusOK {
+				var reason string = "unhandled reason"
+				switch {
+				case responseCode == http.StatusNotFound:
+					reason = "Not found"
+				case responseCode == http.StatusUnauthorized:
+					reason = "Unauthorized"
+				}
+				return errorResponse{StatusCode: responseCode, Reason: reason}
+			}
+			return nil
+		}
+		if err := retry.Try(work); err != nil {
+			return nil, err
+		}
+
+		var r Tags
+		if err := json.Unmarshal(data, &r); err != nil {
+			return nil, err
+		}
+		for _, tag := range r.Tags {
+			tags[tag.DisplayID] = tag
+		}
+		morePages = !r.IsLastPage
+		start = r.NextPageStart
+	}
+	return tags, nil
 }
 
 // GetRepository returns a repository representation for the given Stash Project key and repository slug.
