@@ -53,7 +53,7 @@ func TestCreateBranchRestriction(t *testing.T) {
 		t.Fatalf("Want develop but got %s\n", branchRestriction.Branch.DisplayID)
 	}
 	if branchRestriction.Id != 41 {
-		t.Fatalf("Want 41 but got %s\n", branchRestriction.Id)
+		t.Fatalf("Want 41 but got %d\n", branchRestriction.Id)
 	}
 }
 

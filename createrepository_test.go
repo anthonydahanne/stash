@@ -93,9 +93,9 @@ func TestCreateRepository(t *testing.T) {
 		t.Fatalf("Want bar but got %s\n", repo.Slug)
 	}
 	if repo.ID != 17 {
-		t.Fatalf("Want 17 but got %s\n", repo.ID)
+		t.Fatalf("Want 17 but got %d\n", repo.ID)
 	}
 	if url := repo.SshUrl(); url != "ssh://git@localhost:7999/plat/bar.git" {
-		t.Fatalf("Want ssh://git@localhost:7999/plat/bar.git but got %s\n", repo.ID)
+		t.Fatalf("Want ssh://git@localhost:7999/plat/bar.git but got %d\n", repo.ID)
 	}
 }

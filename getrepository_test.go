@@ -94,10 +94,10 @@ func TestGetRepository(t *testing.T) {
 		t.Fatalf("Want trunk but got %s\n", repo.Slug)
 	}
 	if repo.ID != 536 {
-		t.Fatalf("Want 536 but got %s\n", repo.ID)
+		t.Fatalf("Want 536 but got %d\n", repo.ID)
 	}
 	if url := repo.SshUrl(); url != "ssh://git@example.com:9999/PROJ/trunk.git" {
-		t.Fatalf("Want ssh://git@example.com:9999/PROJ/trunk.git but got %s\n", repo.ID)
+		t.Fatalf("Want ssh://git@example.com:9999/PROJ/trunk.git but got %d\n", repo.ID)
 	}
 }
 

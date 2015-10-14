@@ -62,7 +62,7 @@ func TestGetBranchRestrictions(t *testing.T) {
 		t.Fatalf("Want develop but got %s\n", branchRestrictions.BranchRestriction[0].Branch.DisplayID)
 	}
 	if branchRestrictions.BranchRestriction[0].Id != 41 {
-		t.Fatalf("Want 41 but got %s\n", branchRestrictions.BranchRestriction[0].Id)
+		t.Fatalf("Want 41 but got %d\n", branchRestrictions.BranchRestriction[0].Id)
 	}
 }
 
