@@ -34,6 +34,7 @@ type (
 		GetPullRequests(projectKey, repositorySlug, state string) ([]PullRequest, error)
 		GetRawFile(projectKey, repositorySlug, branch, filePath string) ([]byte, error)
 		CreatePullRequest(projectKey, repositorySlug, title, description, fromRef, toRef string, reviewers []string) (PullRequest, error)
+		DeleteBranch(projectKey, repositorySlug, branchName string) error
 	}
 
 	Client struct {
@@ -686,6 +687,34 @@ func (client Client) CreatePullRequest(projectKey, repositorySlug, title, descri
 	}
 
 	return t, nil
+}
+
+func (client Client) DeleteBranch(projectKey, repositorySlug, branchName string) error {
+	work := func() error {
+		buffer := bytes.NewBufferString((fmt.Sprintf(`{"name":"refs/heads/%s","dryRun":false}`, branchName)))
+		req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/rest/branch-utils/1.0/projects/%s/repos/%s/branches", client.baseURL.String(), projectKey, repositorySlug), buffer)
+		if err != nil {
+			return err
+		}
+		req.SetBasicAuth(client.userName, client.password)
+
+		responseCode, _, err := consumeResponse(req)
+		if err != nil {
+			return err
+		}
+
+		switch responseCode {
+		case http.StatusNoContent:
+			return nil
+		case http.StatusBadRequest:
+			return errorResponse{StatusCode: responseCode, Reason: "Bad Requeest"}
+		case http.StatusUnauthorized:
+			return errorResponse{StatusCode: responseCode, Reason: "Unauthorized"}
+		default:
+			return errorResponse{StatusCode: responseCode, Reason: "(unhandled reason)"}
+		}
+	}
+	return retry.New(3*time.Second, 3, retry.DefaultBackoffFunc).Try(work)
 }
 
 func (client Client) GetRawFile(repositoryProjectKey, repositorySlug, filePath, branch string) ([]byte, error) {
