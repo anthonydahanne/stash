@@ -23,6 +23,9 @@ func TestDeleteBranch(t *testing.T) {
 		if url.Path != "/rest/branch-utils/1.0/projects/PROJ/repos/slug/branches" {
 			t.Fatalf("want /rest/branch-utils/1.0/projects/PROJ/repos/slug/branches but got %s\n", url.Path)
 		}
+		if r.Header.Get("Content-type") != "application/json" {
+			t.Fatalf("Want Content-type application/json but found %s\n", r.Header.Get("Content-type"))
+		}
 		if r.Header.Get("Authorization") != "Basic dTpw" {
 			t.Fatalf("Want Basic dTpw but found %s\n", r.Header.Get("Authorization"))
 		}
