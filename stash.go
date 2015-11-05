@@ -696,7 +696,7 @@ func (client Client) DeleteBranch(projectKey, repositorySlug, branchName string)
 		if err != nil {
 			return err
 		}
-	  req.Header.Set("Content-type", "application/json")
+		req.Header.Set("Content-type", "application/json")
 		req.SetBasicAuth(client.userName, client.password)
 
 		responseCode, _, err := consumeResponse(req)
