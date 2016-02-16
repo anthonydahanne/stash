@@ -258,7 +258,10 @@ func (client Client) GetRepositories() (map[int]Repository, error) {
 			}
 			Log.Printf("stash.GetRepositories URL %s\n", req.URL)
 			req.Header.Set("Accept", "application/json")
-			req.SetBasicAuth(client.userName, client.password)
+			// use credentials if we have them.  If not, the repository must be public.
+			if client.userName != "" && client.password != "" {
+				req.SetBasicAuth(client.userName, client.password)
+			}
 
 			var responseCode int
 			responseCode, data, err = consumeResponse(req)
@@ -411,7 +414,10 @@ func (client Client) GetRepository(projectKey, repositorySlug string) (Repositor
 		}
 		Log.Printf("stash.GetRepository %s\n", req.URL)
 		req.Header.Set("Accept", "application/json")
-		req.SetBasicAuth(client.userName, client.password)
+		// use credentials if we have them.  If not, the repository must be public.
+		if client.userName != "" && client.password != "" {
+			req.SetBasicAuth(client.userName, client.password)
+		}
 
 		responseCode, data, err := consumeResponse(req)
 		if err != nil {
